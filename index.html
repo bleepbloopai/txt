@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>terminal</title>
+<title>Chat</title>
 <style>
 :root{--bg:#000;--fg:#2bd94a;--bar:#fff;--bartext:#000}
 *{box-sizing:border-box}
@@ -11,7 +11,9 @@ html,body{height:100%;margin:0;background:#000}
 body{display:flex;align-items:center;justify-content:center;font-family:"Courier New",Courier,monospace}
 .win{width:min(760px,94%);height:min(520px,80%);background:var(--bg);border:2px solid var(--bar);display:flex;flex-direction:column}
 .bar{background:var(--bar);color:var(--bartext);height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:13px;font-weight:bold;flex:none}
-.bar span.b{display:inline-block;width:12px;height:12px;border:2px solid #000;margin-left:5px}
+.bar .b{display:inline-block;width:12px;height:12px;border:2px solid #000;margin-left:5px}
+.bar .right{display:flex;align-items:center}
+select{background:#fff;color:#000;border:2px solid #000;border-radius:0;font:inherit;font-size:12px;font-weight:bold;height:20px;padding:0 4px;margin-right:6px;max-width:48vw;cursor:pointer;outline:0}
 .log{flex:1;overflow-y:auto;padding:12px;color:var(--fg);font-size:15px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .log div{margin-bottom:10px}
 .row{display:flex;padding:0 12px 12px;color:var(--fg);font-size:15px;flex:none}
@@ -21,34 +23,47 @@ input{flex:1;background:transparent;border:0;outline:0;color:var(--fg);font:inhe
 </head>
 <body>
 <div class="win">
-  <div class="bar"><span>C:\TERMINAL.EXE</span><span><span class="b"></span><span class="b"></span></span></div>
-  <div class="log" id="log"><div>connection open. type something.</div></div>
+  <div class="bar"><span>Chatbot Interface</span><span class="right"><select id="persona" aria-label="personality"></select><span class="b"></span><span class="b"></span></span></div>
+  <div class="log" id="log"><div>connection open.</div></div>
   <div class="row"><span>&gt;</span><input id="in" autocomplete="off" autofocus spellcheck="false"></div>
 </div>
 <script>
-// PUT YOUR WORKER URL HERE after you deploy it
 const WORKER_URL = "https://text.bleepbloop-ai.workers.dev/";
+const NAMES = ["Bestie","Big Brain","Dummy","Sass","Puppy","Nosy Detective","Weird Wizard","Chill Friend","Corporate Bot","Alien"];
 
-const log=document.getElementById('log'),inp=document.getElementById('in');
-const turns=[];let busy=false;
+const log=document.getElementById('log'),inp=document.getElementById('in'),sel=document.getElementById('persona');
+let turns=[],busy=false,persona=1,session=0;
+NAMES.forEach((n,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=n;sel.appendChild(o)});
+
 function add(t){const d=document.createElement('div');d.textContent=t;log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+function reset(){
+  session++;busy=false;turns=[];log.innerHTML='';
+  add('personality loaded: '+NAMES[persona-1]+'. say hi.');
+  inp.focus();
+}
+sel.addEventListener('change',()=>{persona=parseInt(sel.value,10);reset()});
+reset();
+
 inp.addEventListener('keydown',async e=>{
   if(e.key!=='Enter'||busy)return;
   const q=inp.value.trim();if(!q)return;
   inp.value='';add('> '+q);
+  const mine=session;
   busy=true;turns.push({role:'user',content:q});
   const out=add('...');
   try{
-    const res=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:turns})});
+    const res=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:turns,personality:persona})});
     const data=await res.json();
-    if(!res.ok||data.error)throw new Error();
+    if(mine!==session)return; // switched personality while waiting: drop this reply
+    if(!res.ok)throw new Error();
     out.textContent=data.reply;turns.push({role:'assistant',content:data.reply});
   }catch(err){
+    if(mine!==session)return;
     turns.pop();out.textContent='error: no connection.';
   }
   busy=false;inp.focus();log.scrollTop=log.scrollHeight;
 });
-document.addEventListener('click',()=>inp.focus());
+document.addEventListener('click',e=>{if(e.target!==sel)inp.focus()});
 </script>
 </body>
 </html>
