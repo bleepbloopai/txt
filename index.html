@@ -74,17 +74,31 @@ input:disabled{opacity:.55}
 const WORKER_URL = "https://text.bleepbloop-ai.workers.dev/";
 const NAMES = ["The Nerd","Dumbass","Chaos Gremlin","The Manager","Wizard Dave","The Alien","Drama Queen","Deep Thoughts","Roast Machine","Glitchy"];
 const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MAX_TURNS = 24;
+const MAX_REPLY_LENGTH = 8000;
 
 const log=document.getElementById('log'),inp=document.getElementById('in'),sel=document.getElementById('persona');
-let turns=[],busy=false,persona=1,session=0,raf=null,name=null;
+let turns=[],busy=false,persona=1,session=0,raf=null,name=null,activeController=null,activeDots=null,activeTimeout=null;
 try{name=localStorage.getItem('chat_name')||null}catch(e){}
 NAMES.forEach((n,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=n;sel.appendChild(o)});
+sel.value=String(persona);
 
 function scrollDown(force){
   if(force||log.scrollHeight-log.scrollTop-log.clientHeight<90)log.scrollTop=log.scrollHeight;
 }
 function add(t,cls){const d=document.createElement('div');if(cls)d.className=cls;d.textContent=t;log.appendChild(d);scrollDown(true);return d}
 function setBusy(b){busy=b;inp.disabled=b;if(!b)inp.focus({preventScroll:true})}
+function finishRequest(controller){
+  if(activeController!==controller)return;
+  if(activeDots!==null){clearInterval(activeDots);activeDots=null}
+  if(activeTimeout!==null){clearTimeout(activeTimeout);activeTimeout=null}
+  activeController=null;
+}
+function cancelActiveRequest(){
+  const controller=activeController;
+  finishRequest(controller);
+  if(controller)controller.abort();
+}
 function type(el,text,done){
   cancelAnimationFrame(raf);
   if(reduceMotion){el.textContent=text;scrollDown();done&&done();return}
@@ -101,7 +115,7 @@ function type(el,text,done){
 function cleanName(s){return s.replace(/[^\p{L}\p{N} .'-]/gu,'').trim().slice(0,30)}
 function loaded(){add('personality loaded: '+NAMES[persona-1]+'. say hi, '+name+'.','sys')}
 function reset(){
-  session++;cancelAnimationFrame(raf);turns=[];log.innerHTML='';setBusy(false);
+  session++;cancelAnimationFrame(raf);cancelActiveRequest();turns=[];log.replaceChildren();setBusy(false);
   if(name)loaded();else{add('connection open.','sys');add('what should i call you?','sys')}
 }
 sel.addEventListener('change',()=>{persona=parseInt(sel.value,10);reset();sel.blur();inp.focus()});
@@ -121,22 +135,27 @@ inp.addEventListener('keydown',async e=>{
   }
 
   const mine=session;
-  setBusy(true);turns.push({role:'user',content:q});
+  setBusy(true);
+  while(turns.length>=MAX_TURNS)turns.splice(0,2);
+  turns.push({role:'user',content:q});
   const out=add('.','bot');
-  const dots=setInterval(()=>{out.textContent=out.textContent.length>=3?'.':out.textContent+'.'},350);
-  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),40000);
+  const ctl=new AbortController();
+  activeController=ctl;
+  activeDots=setInterval(()=>{out.textContent=out.textContent.length>=3?'.':out.textContent+'.'},350);
+  activeTimeout=setTimeout(()=>ctl.abort(),40000);
   try{
     const res=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:turns,personality:persona,name}),signal:ctl.signal});
     const data=await res.json();
-    clearInterval(dots);clearTimeout(to);
     if(mine!==session)return;
-    if(!res.ok||!data.reply)throw new Error();
-    turns.push({role:'assistant',content:data.reply});
-    type(out,data.reply,()=>{if(mine===session)setBusy(false)});
+    const reply=typeof data?.reply==='string'?data.reply.trim().slice(0,MAX_REPLY_LENGTH):'';
+    if(!res.ok||!reply)throw new Error();
+    turns.push({role:'assistant',content:reply});
+    type(out,reply,()=>{if(mine===session)setBusy(false)});
   }catch(err){
-    clearInterval(dots);clearTimeout(to);
     if(mine!==session)return;
     turns.pop();out.className='sys';out.textContent='error: no connection. try again.';setBusy(false);
+  }finally{
+    finishRequest(ctl);
   }
 });
 document.addEventListener('click',e=>{if(e.target!==sel&&!inp.disabled&&!window.getSelection().toString())inp.focus({preventScroll:true})});
