@@ -2,67 +2,131 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Terminal Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Chatbot</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='black'/%3E%3Crect x='3' y='9' width='6' height='3' fill='%2333e657'/%3E%3C/svg%3E">
 <style>
-:root{--bg:#000;--fg:#2bd94a;--bar:#fff;--bartext:#000}
+:root{
+  --bg:#000;--fg:#33e657;--dim:#1f9f3d;--rule:#124d1f;--bar:#fff;--bartext:#000;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,"Liberation Mono","Courier New",monospace;
+}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:#000}
-body{height:100dvh}
-body{display:flex;align-items:center;justify-content:center;font-family:"Courier New",Courier,monospace}
-.win{width:min(760px,94%);height:min(520px,80%);background:var(--bg);border:2px solid var(--bar);display:flex;flex-direction:column}
-.bar{background:var(--bar);color:var(--bartext);height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:13px;font-weight:bold;flex:none}
-.bar .b{display:inline-block;width:12px;height:12px;border:2px solid #000;margin-left:5px}
-.bar .right{display:flex;align-items:center}
-select{background:#fff;color:#000;border:2px solid #000;border-radius:0;font:inherit;font-size:12px;font-weight:bold;height:20px;padding:0 4px;margin-right:6px;max-width:48vw;cursor:pointer;outline:0}
-.log{flex:1;overflow-y:auto;padding:12px;color:var(--fg);font-size:16px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
-.log div{margin-bottom:10px}
-.row{display:flex;padding:0 12px 12px;color:var(--fg);font-size:16px;flex:none}
-.row span{margin-right:8px}
-input{flex:1;background:transparent;border:0;outline:0;color:var(--fg);font:inherit;font-size:16px;caret-color:var(--fg);padding:0;min-width:0}
+body{height:100dvh;display:flex;align-items:center;justify-content:center;font-family:var(--mono);
+  padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom))}
+::selection{background:var(--fg);color:#000}
+
+.win{width:min(840px,100%);height:min(620px,100%);background:var(--bg);border:2px solid var(--bar);
+  display:flex;flex-direction:column;animation:boot .35s ease-out both}
+@keyframes boot{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+
+.bar{background:var(--bar);color:var(--bartext);height:30px;flex:none;display:flex;align-items:center;
+  justify-content:space-between;padding:0 8px 0 10px;font-size:13px;font-weight:700;letter-spacing:.04em;user-select:none}
+.bar .right{display:flex;align-items:center;gap:6px}
+.bar .b{width:16px;height:16px;border:2px solid #000;display:grid;place-items:center;font-size:11px;line-height:1;font-weight:700}
+select{appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0h10L5 6z' fill='black'/%3E%3C/svg%3E") no-repeat right 6px center;
+  color:#000;border:2px solid #000;border-radius:0;font:inherit;font-size:12px;font-weight:700;height:20px;
+  padding:0 22px 0 6px;max-width:46vw;cursor:pointer;outline:0;text-overflow:ellipsis}
+select:hover{background-color:#e8e8e8}
+select:focus-visible{outline:2px dashed #000;outline-offset:2px}
+
+.log{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:16px 18px 8px;color:var(--fg);font-size:16px;line-height:1.55;
+  white-space:pre-wrap;word-break:break-word;scrollbar-width:thin;scrollbar-color:var(--dim) #000}
+.log::-webkit-scrollbar{width:10px}
+.log::-webkit-scrollbar-track{background:#000;border-left:1px solid var(--rule)}
+.log::-webkit-scrollbar-thumb{background:var(--dim)}
+.log div{margin-bottom:12px;animation:line .18s ease-out both}
+@keyframes line{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.log .sys{color:var(--dim)}
+.log .me{color:var(--dim)}
+.log .bot{color:var(--fg)}
+.log .typing::after{content:"";display:inline-block;width:.6em;height:1.05em;margin-left:2px;background:var(--fg);vertical-align:text-bottom;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+.row{display:flex;align-items:center;padding:10px 18px 14px;border-top:1px solid var(--rule);color:var(--fg);font-size:16px;flex:none}
+.row span{margin-right:10px;color:var(--fg)}
+input{flex:1;min-width:0;background:transparent;border:0;outline:0;padding:0;color:var(--fg);font:inherit;font-size:16px;caret-color:var(--fg)}
+input::placeholder{color:var(--rule);opacity:1}
+input:disabled{opacity:.55}
+
+@media (max-width:520px){
+  .win{border-width:1px}
+  .log{padding:12px 12px 6px;font-size:15px}
+  .row{padding:8px 12px 12px}
+  .bar{font-size:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important}
+}
 </style>
 </head>
 <body>
 <div class="win">
-  <div class="bar"><span>Chatbot Interface</span><span class="right"><select id="persona" aria-label="personality"></select><span class="b"></span><span class="b"></span></span></div>
-  <div class="log" id="log"><div>connection open.</div></div>
-  <div class="row"><span>&gt;</span><input id="in" autocomplete="off" autofocus spellcheck="false" maxlength="1000"></div>
+  <div class="bar">
+    <span>Chatbot Interface</span>
+    <span class="right"><select id="persona" aria-label="Choose a personality"></select><span class="b" aria-hidden="true">_</span><span class="b" aria-hidden="true">X</span></span>
+  </div>
+  <div class="log" id="log" role="log" aria-live="polite"></div>
+  <div class="row"><span>&gt;</span><input id="in" autocomplete="off" autocapitalize="sentences" autofocus spellcheck="false" maxlength="1000" placeholder="type here" aria-label="Message"></div>
 </div>
 <script>
 const WORKER_URL = "https://text.bleepbloop-ai.workers.dev/";
-const NAMES = ["Bestie","Big Brain","Dummy","Sass","Puppy","Nosy Detective","Weird Wizard","Chill Friend","Corporate Bot","Alien"];
+const NAMES = ["The Nerd","Dumbass","Chaos Gremlin","The Manager","Wizard Dave","The Alien","Drama Queen","Deep Thoughts","Roast Machine","Glitchy"];
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const log=document.getElementById('log'),inp=document.getElementById('in'),sel=document.getElementById('persona');
-let turns=[],busy=false,persona=1,session=0,typer=null;
+let turns=[],busy=false,persona=1,session=0,raf=null,name=null;
+try{name=localStorage.getItem('chat_name')||null}catch(e){}
 NAMES.forEach((n,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=n;sel.appendChild(o)});
 
-function add(t){const d=document.createElement('div');d.textContent=t;log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
-function setBusy(b){busy=b;inp.disabled=b;if(!b)inp.focus()}
+function scrollDown(force){
+  if(force||log.scrollHeight-log.scrollTop-log.clientHeight<90)log.scrollTop=log.scrollHeight;
+}
+function add(t,cls){const d=document.createElement('div');if(cls)d.className=cls;d.textContent=t;log.appendChild(d);scrollDown(true);return d}
+function setBusy(b){busy=b;inp.disabled=b;if(!b)inp.focus({preventScroll:true})}
 function type(el,text,done){
-  let i=0;clearInterval(typer);
-  typer=setInterval(()=>{
-    i+=2;el.textContent=text.slice(0,i);log.scrollTop=log.scrollHeight;
-    if(i>=text.length){clearInterval(typer);el.textContent=text;done&&done()}
-  },14);
+  cancelAnimationFrame(raf);
+  if(reduceMotion){el.textContent=text;scrollDown();done&&done();return}
+  const cps=Math.max(80,text.length/2.5);let start=null;
+  el.classList.add('typing');
+  (function step(t){
+    if(start===null)start=t;
+    const n=Math.min(text.length,Math.floor((t-start)/1000*cps));
+    el.textContent=text.slice(0,n);scrollDown();
+    if(n<text.length)raf=requestAnimationFrame(step);
+    else{el.classList.remove('typing');done&&done()}
+  })(performance.now());
 }
+function cleanName(s){return s.replace(/[^\p{L}\p{N} .'-]/gu,'').trim().slice(0,30)}
+function loaded(){add('personality loaded: '+NAMES[persona-1]+'. say hi, '+name+'.','sys')}
 function reset(){
-  session++;clearInterval(typer);turns=[];log.innerHTML='';setBusy(false);
-  add('personality loaded: '+NAMES[persona-1]+'. say hi.');
+  session++;cancelAnimationFrame(raf);turns=[];log.innerHTML='';setBusy(false);
+  if(name)loaded();else{add('connection open.','sys');add('what should i call you?','sys')}
 }
-sel.addEventListener('change',()=>{persona=parseInt(sel.value,10);reset()});
+sel.addEventListener('change',()=>{persona=parseInt(sel.value,10);reset();sel.blur();inp.focus()});
 reset();
 
 inp.addEventListener('keydown',async e=>{
-  if(e.key!=='Enter'||busy)return;
+  if(e.key!=='Enter'||busy||e.isComposing)return;
   const q=inp.value.trim();if(!q)return;
-  inp.value='';add('> '+q);
+  inp.value='';add('> '+q,'me');
+
+  if(q==='/name'){name=null;try{localStorage.removeItem('chat_name')}catch(e){};add('ok. what should i call you?','sys');return}
+  if(!name){
+    const n=cleanName(q);
+    if(!n){add('just a name, letters please. what should i call you?','sys');return}
+    name=n;try{localStorage.setItem('chat_name',n)}catch(e){}
+    loaded();return;
+  }
+
   const mine=session;
   setBusy(true);turns.push({role:'user',content:q});
-  const out=add('...');
+  const out=add('.','bot');
   const dots=setInterval(()=>{out.textContent=out.textContent.length>=3?'.':out.textContent+'.'},350);
   const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),40000);
   try{
-    const res=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:turns,personality:persona}),signal:ctl.signal});
+    const res=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:turns,personality:persona,name}),signal:ctl.signal});
     const data=await res.json();
     clearInterval(dots);clearTimeout(to);
     if(mine!==session)return;
@@ -72,10 +136,10 @@ inp.addEventListener('keydown',async e=>{
   }catch(err){
     clearInterval(dots);clearTimeout(to);
     if(mine!==session)return;
-    turns.pop();out.textContent='error: no connection. try again.';setBusy(false);
+    turns.pop();out.className='sys';out.textContent='error: no connection. try again.';setBusy(false);
   }
 });
-document.addEventListener('click',e=>{if(e.target!==sel&&!inp.disabled)inp.focus()});
+document.addEventListener('click',e=>{if(e.target!==sel&&!inp.disabled&&!window.getSelection().toString())inp.focus({preventScroll:true})});
 </script>
 </body>
 </html>
