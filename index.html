@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>terminal</title>
+<style>
+:root{--bg:#000;--fg:#2bd94a;--bar:#fff;--bartext:#000}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:#000}
+body{display:flex;align-items:center;justify-content:center;font-family:"Courier New",Courier,monospace}
+.win{width:min(760px,94%);height:min(520px,80%);background:var(--bg);border:2px solid var(--bar);display:flex;flex-direction:column}
+.bar{background:var(--bar);color:var(--bartext);height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:13px;font-weight:bold;flex:none}
+.bar span.b{display:inline-block;width:12px;height:12px;border:2px solid #000;margin-left:5px}
+.log{flex:1;overflow-y:auto;padding:12px;color:var(--fg);font-size:15px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.log div{margin-bottom:10px}
+.row{display:flex;padding:0 12px 12px;color:var(--fg);font-size:15px;flex:none}
+.row span{margin-right:8px}
+input{flex:1;background:transparent;border:0;outline:0;color:var(--fg);font:inherit;caret-color:var(--fg);padding:0;min-width:0}
+</style>
+</head>
+<body>
+<div class="win">
+  <div class="bar"><span>C:\TERMINAL.EXE</span><span><span class="b"></span><span class="b"></span></span></div>
+  <div class="log" id="log"><div>connection open. type something.</div></div>
+  <div class="row"><span>&gt;</span><input id="in" autocomplete="off" autofocus spellcheck="false"></div>
+</div>
+<script>
+// PUT YOUR WORKER URL HERE after you deploy it
+const WORKER_URL = "https://text.bleepbloop-ai.workers.dev/";
+
+const log=document.getElementById('log'),inp=document.getElementById('in');
+const turns=[];let busy=false;
+function add(t){const d=document.createElement('div');d.textContent=t;log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+inp.addEventListener('keydown',async e=>{
+  if(e.key!=='Enter'||busy)return;
+  const q=inp.value.trim();if(!q)return;
+  inp.value='';add('> '+q);
+  busy=true;turns.push({role:'user',content:q});
+  const out=add('...');
+  try{
+    const res=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:turns})});
+    const data=await res.json();
+    if(!res.ok||data.error)throw new Error();
+    out.textContent=data.reply;turns.push({role:'assistant',content:data.reply});
+  }catch(err){
+    turns.pop();out.textContent='error: no connection.';
+  }
+  busy=false;inp.focus();log.scrollTop=log.scrollHeight;
+});
+document.addEventListener('click',()=>inp.focus());
+</script>
+</body>
+</html>
